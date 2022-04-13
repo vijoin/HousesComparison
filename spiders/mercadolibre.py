@@ -12,9 +12,11 @@ from write_json import write_to_json_file
 class Spider:
 
     def __init__(self) -> None:
-        self.base_url = "https://listado.mercadolibre.com.uy/inmuebles/{}/{}/_Desde_{}_PriceRange_{}UYU-{}UYU_NoIndex_True"
+        self.base_url = "https://listado.mercadolibre.com.uy/inmuebles/{}/{}/{}/{}/_Desde_{}_PriceRange_{}UYU-{}UYU_NoIndex_True"
         self.property_type = 'casas'
         self.contract_type = 'alquiler'
+        self.rooms = '3-dormitorios'
+        self.city = 'canelones'
         self.min_price = 19500
         self.max_price = 19500
         self.driver = self.get_driver()
@@ -34,6 +36,8 @@ class Spider:
         return self.base_url.format(
             self.property_type,
             self.contract_type,
+            self.rooms,
+            self.city,
             str(48*page_number+1),
             self.min_price,
             self.max_price,
@@ -57,10 +61,26 @@ class Spider:
     
     def parse_page(self, page_link):
         self.driver.get(page_link)
+        total_area, rooms, bathrooms  = [feat.text for feat in self.driver.find_elements(By.XPATH, '//div[@class="ui-pdp-highlighted-specs-res__icon-label"]')]
+        name = self.driver.find_element(By.XPATH, '//h1[@class="ui-pdp-title"]').text
+        price = int(self.driver.find_element(By.XPATH, '//span[@class="andes-money-amount__fraction"]').text.replace('.', ''))
+        address = self.driver.find_element(By.XPATH, '//figure[@class="ui-pdp-media__figure"]/following-sibling::div/p').text
+
         return {
-            'name': self.driver.find_element(By.XPATH, '//h1[@class="ui-pdp-title"]').text,
-            'price': int(self.driver.find_element(By.XPATH, '//span[@class="andes-money-amount__fraction"]').text.replace('.', '')),
-            'address': self.driver.find_element(By.XPATH, '//figure[@class="ui-pdp-media__figure"]/following-sibling::div/p').text
+            'name': name,
+            'price': price,
+            'property_type': self.property_type,
+            'url': page_link,
+            'features': {
+                'total_area': total_area,
+                'rooms': rooms,
+                'bathrooms': bathrooms,
+            },
+            'location': {
+                # 'state': str,
+                'city': self.city,
+                'address': address,
+            },
         }
 
     def get_driver(self):
